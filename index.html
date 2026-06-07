@@ -1,1 +1,76 @@
-<!DOCTYPE html><html><head><script>const PREFIX = "Balatro_demo_";const originalOpen = indexedDB.open;const originalDeleteDatabase = indexedDB.deleteDatabase;indexedDB.open = function(name, version) {const prefixedName = PREFIX + name;return version !== undefined?originalOpen.call(this, prefixedName, version):originalOpen.call(this, prefixedName);};indexedDB.deleteDatabase = function(name) {const prefixedName = PREFIX + name;return originalDeleteDatabase.call(this, prefixedName);};</script><script src="love.min.js"></script><title>Love.js</title><style>#canvas {position:absolute;top: 0;left: 0;width: 100vw;height: 100vh;}body {width: 100vw;height: 100vh;margin: 0px;}</style></head><body><canvas id="canvas"></canvas><script src="module.js"></script><script>(async()=>{const d=await getSource();Module={INITIAL_MEMORY:2**28,canvas:canvas,printErr:console.error,arguments:["game.love"]};Module.preRun = [function(){Module.addRunDependency("fp game.love");var ptr = Module.getMemory(d.length);Module['HEAPU8'].set(d, ptr);Module.FS_createDataFile('/', "game.love", d, true, true, true);Module.removeRunDependency("fp game.love")}];Love(Module)})()</script></body></html>
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script>const PREFIX = "Balatro_demo_"; const originalOpen = indexedDB.open; const originalDeleteDatabase = indexedDB.deleteDatabase; indexedDB.open = function (name, version) { const prefixedName = PREFIX + name; return version !== undefined ? originalOpen.call(this, prefixedName, version) : originalOpen.call(this, prefixedName); }; indexedDB.deleteDatabase = function (name) { const prefixedName = PREFIX + name; return originalDeleteDatabase.call(this, prefixedName); };</script>
+    <script src="love.min.js"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <title>Love.js</title>
+    <style>
+        body, html { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #000; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; color: white; font-family: sans-serif; }
+        #progress-bar { width: 50%; height: 20px; border: 2px solid #fff; border-radius: 10px; overflow: hidden; background: #222; }
+        #progress-fill { width: 0%; height: 100%; background: #4caf50; transition: width 0.1s linear; }
+        #status { margin-top: 15px; font-size: 16px; color: #fff; }
+    </style>
+</head>
+
+<body>
+    <div id="loader">
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+        <div id="status">正在准备加载核心引擎...</div>
+    </div>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+
+    <script>
+        (async () => {
+            const fill = document.getElementById('progress-fill');
+            const status = document.getElementById('status');
+            const loader = document.getElementById('loader');
+            const scriptUrl = "https://cold-silence-567c.bengang904.workers.dev/?url=https://ia600705.us.archive.org/8/items/module_202606/module.js";
+            
+            const TOTAL_BYTES = 114651 * 1024;
+
+            const response = await fetch(scriptUrl);
+            const reader = response.body.getReader();
+            let receivedLength = 0;
+            let chunks = [];
+
+            while(true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                receivedLength += value.length;
+                
+                let percent = Math.min(Math.round((receivedLength / TOTAL_BYTES) * 100), 100);
+                fill.style.width = percent + '%';
+                status.innerText = `正在下载资源... ${percent}% (${(receivedLength / (1024 * 1024)).toFixed(2)} MB / ${(TOTAL_BYTES / (1024 * 1024)).toFixed(2)} MB)`;
+            }
+
+            fill.style.width = '100%';
+            status.innerText = "下载完成，正在进行引擎载入中...";
+
+            const scriptText = new TextDecoder().decode(new Uint8Array(await new Blob(chunks).arrayBuffer()));
+            const script = document.createElement('script');
+            script.textContent = scriptText;
+            document.head.appendChild(script);
+
+            status.innerText = "引擎已载入，正在解压游戏数据...";
+            const d = await getSource();
+            
+            Module = {
+                canvas: document.getElementById('canvas'),
+                arguments: ["game.love"],
+                preRun: [(mod) => {
+                    mod.FS_createDataFile('/', "game.love", d, true, true, true);
+                }],
+                onRuntimeInitialized: () => {
+                    loader.style.display = 'none';
+                }
+            };
+            Love(Module);
+        })();
+    </script>
+</body>
+</html>
